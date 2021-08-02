@@ -2,9 +2,7 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/stretchr/testify/require"
 	"github.com/wgarunap/kube-image-clone-controller/config"
 	"github.com/wgarunap/kube-image-clone-controller/domain"
@@ -18,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 	"testing"
 )
 
@@ -55,9 +52,9 @@ func fakeClient() client.Client {
 				},
 			},
 		},
-		&appsv1.Deployment{
+		&appsv1.DaemonSet{
 			ObjectMeta: mv1.ObjectMeta{Name: "test_daemon", Namespace: "something"},
-			Spec: appsv1.DeploymentSpec{
+			Spec: appsv1.DaemonSetSpec{
 				Template: cv1.PodTemplateSpec{
 					Spec: cv1.PodSpec{
 						Containers: []cv1.Container{{
@@ -96,6 +93,16 @@ func TestReconcileImage_ReconcileDevelopment(t *testing.T) {
 	config.Config.UserName = "new_user"
 	log.SetLogger(zap.New())
 
+	out := []string{
+		"localhost:5000/new_user/test_images_image:v1.0",
+		"localhost:5000/new_user/test_images_222_image2:v1.0",
+		"localhost:5000/new_user/test_container_333_image3:latest",
+		"localhost:5000/new_user/container_clone_error_image:v1.0",
+		"localhost:5000/new_user/container_no_tag_check_image:latest",
+		"localhost:5000/new_user/dockerhub_container_image:latest",
+		"localhost:5000/new_user/dockerhub_container_image:latest",
+	}
+
 	reconcileOb := &reconcileImage{
 		client: fakeClient(),
 		object: NewDeploymentObject(),
@@ -119,10 +126,46 @@ func TestReconcileImage_ReconcileDevelopment(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	for _, container := range rs.Spec.Template.Spec.Containers {
-		fmt.Println(container.Image)
+	for i, container := range rs.Spec.Template.Spec.Containers {
+		require.Equal(t, out[i], container.Image)
+	}
+}
+
+func TestReconcileImage_ReconcileDaemonSet(t *testing.T) {
+	config.Config.TargetRegistry = "localhost:5000"
+	config.Config.UserName = "new_user"
+	log.SetLogger(zap.New())
+
+	out := []string{
+		"localhost:5000/new_user/test_images_daemon_image2:v1.0",
 	}
 
+	reconcileOb := &reconcileImage{
+		client: fakeClient(),
+		object: NewDaemonSetObject(),
+		cfg:    config.Config,
+		cloner: fakeCloner(t),
+	}
+
+	namespace := types.NamespacedName{
+		Namespace: "something",
+		Name:      "test_daemon",
+	}
+	_, err := reconcileOb.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: namespace,
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	rs := &appsv1.DaemonSet{}
+	err = reconcileOb.client.Get(context.Background(), namespace, rs)
+	if err != nil {
+		t.Error(err)
+	}
+	for i, container := range rs.Spec.Template.Spec.Containers {
+		require.Equal(t, out[i], container.Image)
+	}
 }
 
 func TestGenerateNewImageName(t *testing.T) {
@@ -164,21 +207,6 @@ func TestGenerateNewImageName(t *testing.T) {
 		require.Equal(t, nil, err)
 		require.Equal(t, datum.outName, out.Name())
 		require.Equal(t, datum.changeStatus, changed)
-		println(out.Name())
+		//println(out.Name())
 	}
-}
-
-func TestNew(t *testing.T) {
-	source, err := name.ParseReference(`dock.io/wgarunap/newnew:latest`)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Println(source.Context().RepositoryStr())
-
-	fmt.Println(strings.ReplaceAll(source.Context().RepositoryStr(), "/", "_"))
-
-	//if strings.Compare(source.Context().RepositoryStr(), `index.docker.io`) == 0 {
-	//	fmt.Println(`equal`)
-	//}
 }

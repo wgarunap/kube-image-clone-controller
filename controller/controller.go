@@ -114,9 +114,10 @@ func (r *reconcileImage) generateNewImageName(imageName string) (n name.Referenc
 		return source, false, nil
 	}
 
-	target, err := name.ParseReference(r.cfg.UserName+"/"+strings.ReplaceAll(source.Context().RepositoryStr(), "/", "_"), name.WithDefaultRegistry(r.cfg.TargetRegistry))
+	target, err := name.ParseReference(r.cfg.UserName+"/"+strings.ReplaceAll(source.Context().RepositoryStr(), "/", "_")+":"+source.Identifier(), name.WithDefaultRegistry(r.cfg.TargetRegistry))
 	if err != nil {
 		return nil, false, err
 	}
+
 	return target, true, nil
 }
