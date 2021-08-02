@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+// Register register the different type of objects with the controller and
+// setup the watcher conditions
 func Register(ob Object, log logr.Logger, mgr manager.Manager, cloner domain.Cloner) error {
 	c, err := controller.New(ob.Name(), mgr, controller.Options{
 		Reconciler: &reconcileImage{
@@ -27,18 +29,21 @@ func Register(ob Object, log logr.Logger, mgr manager.Manager, cloner domain.Clo
 		return err
 	}
 
-	// Watch ReplicaSets and enqueue ReplicaSet object key
+	// Watch received Object and based on the given predicate
 	err = c.Watch(&source.Kind{Type: ob.Get()}, &handler.EnqueueRequestForObject{},
 		predicate.And(
 			predicate.NewPredicateFuncs(func(object client.Object) bool {
 				switch object.GetNamespace() {
-				case "kube-system","kubernetes-dashboard","image-clone-namespace":
+				case "kube-system", "kubernetes-dashboard", "image-clone-namespace":
 					return false
 				}
 				return true
 			}),
 			predicate.Funcs{
 				DeleteFunc: func(event event.DeleteEvent) bool {
+					return false
+				},
+				GenericFunc: func(event event.GenericEvent) bool {
 					return false
 				},
 			},

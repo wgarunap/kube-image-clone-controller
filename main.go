@@ -26,7 +26,6 @@ func main() {
 		panic(err)
 	}
 
-	// Setup a Manager
 	entryLog.Info("setting up manager")
 	mgr, err := manager.New(config.GetConfigOrDie(), manager.Options{})
 	if err != nil {
@@ -34,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cloner := imagecloner.NewCloner()
+	cloner := imagecloner.NewCloner(entryLog, appconf.Config)
 
 	entryLog.Info("registering deployment controller")
 	if err := imageclonecontroller.Register(imageclonecontroller.NewDeploymentObject(), entryLog, mgr, cloner); err != nil {

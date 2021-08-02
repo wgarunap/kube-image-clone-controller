@@ -25,6 +25,30 @@ spec:
                 -   image: testingnew123/kube-image-clone-controller:latest
                     name: kube-image-clone-controller-container
                     imagePullPolicy: Always
+                    resources:
+                        requests:
+                            memory: "64Mi"
+                            cpu: "250m"
+                        limits:
+                            memory: "128Mi"
+                            cpu: "500m"
+                    env:
+                        -   name: TARGET_REGISTRY
+                            valueFrom:
+                                secretKeyRef:
+                                    name: docker-registry-credentials
+                                    key: docker-server
+                        -   name: USERNAME
+                            valueFrom:
+                                secretKeyRef:
+                                    name: docker-registry-credentials
+                                    key: docker-username
+                        -   name: PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: docker-registry-credentials
+                                    key: docker-password
+                                    
 
 ---
 
@@ -42,7 +66,7 @@ metadata:
 rules:
     -   apiGroups: [ "apps" ]
         resources: [ "deployments", "daemonsets" ]
-        verbs: [ "get", "list", "watch", "update" ,"patch"]
+        verbs: [ "get", "list", "watch", "update" ,"patch" ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

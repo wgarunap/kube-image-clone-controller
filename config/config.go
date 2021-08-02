@@ -3,18 +3,19 @@ package config
 import (
 	"errors"
 	"github.com/caarlos0/env"
-	"github.com/docker/cli/cli/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// Conf is the application config object
 type Conf struct {
-	TargetRegistry  string `env:"TARGET_REGISTRY" envDefault:"index.docker.io"`
-	DockerConfigDir string `env:"DOCKER_CONFIG"`
-	UserName        string // internal use
+	TargetRegistry string `env:"TARGET_REGISTRY" envDefault:"index.docker.io"`
+	UserName       string `env:"USERNAME"`
+	Password       string `env:"PASSWORD"`
 }
 
 var Config Conf
 
+//Register will be called for config registration from env variables
 func (*Conf) Register() error {
 	err := env.Parse(&Config)
 	if err != nil {
@@ -24,28 +25,10 @@ func (*Conf) Register() error {
 	return nil
 }
 
+// Validate validates the configs
 func (*Conf) Validate() (err error) {
 	if Config.TargetRegistry == "" {
 		log.Log.Error(errors.New("env TARGET_REGISTRY not found"), "unable to find target registry")
 	}
-
-	Config.UserName, err = username(Config.TargetRegistry, Config.DockerConfigDir)
-	if err != nil {
-		return err
-	}
 	return nil
-}
-
-func username(target string, dockerConfig string) (string, error) {
-	cf, err := config.Load(dockerConfig)
-	if err != nil {
-		return "", err
-	}
-
-	for t, ac := range cf.AuthConfigs {
-		if t == target {
-			return ac.Username, nil
-		}
-	}
-	return "", errors.New(`username not found for the target`)
 }

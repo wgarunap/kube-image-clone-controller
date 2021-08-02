@@ -8,9 +8,6 @@ FROM alpine:3.14.0
 
 WORKDIR /opt
 COPY --from=builder /src/kube-image-clone-controller /opt
-COPY --from=builder /src/config.json /opt
-
-ENV DOCKER_CONFIG=/opt
 
 ENTRYPOINT ["sh","-c","./kube-image-clone-controller"]
 
